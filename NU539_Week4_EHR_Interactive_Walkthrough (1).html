@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NU 539, EHR Walk-Through</title>
+<style>
+  :root {
+    --bg: #eef1f4;
+    --panel: #ffffff;
+    --border: #d7dde3;
+    --ink: #1f2933;
+    --ink-soft: #5b6670;
+    --accent: #1b5e7a;
+    --accent-soft: #e4eef2;
+    --alert-bg: #fdecea;
+    --alert-border: #e0a8a0;
+    --alert-ink: #9a2f22;
+    --support-bg: #fff7e0;
+    --support-border: #e6cd85;
+    --support-ink: #7a5c00;
+    --gold: #d4af37;
+    --navy: #16324a;
+    --card-bg: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14181d;
+      --panel: #1c2128;
+      --border: #333a42;
+      --ink: #e7ecf1;
+      --ink-soft: #a6b0ba;
+      --accent-soft: #1e333d;
+      --card-bg: #1c2128;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14181d;
+    --panel: #1c2128;
+    --border: #333a42;
+    --ink: #e7ecf1;
+    --ink-soft: #a6b0ba;
+    --accent-soft: #1e333d;
+    --card-bg: #1c2128;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    display: flex;
+    justify-content: center;
+    padding: 24px 12px 60px;
+  }
+  .app { width: 100%; max-width: 980px; }
+  .top {
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  .top h1 { font-size: 20px; margin: 0 0 4px 0; }
+  .top p { margin: 0; font-size: 13px; color: var(--ink-soft); }
+
+  .progress { display: flex; justify-content: center; gap: 8px; margin: 16px 0 18px; }
+  .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--border);
+    transition: background 0.25s ease, transform 0.25s ease;
+  }
+  .dot.active { background: var(--accent); transform: scale(1.25); }
+  .dot.done { background: var(--gold); }
+
+  .stage {
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .spotlight {
+    position: absolute;
+    display: none;
+    border-radius: 10px;
+    border: 3px solid var(--gold);
+    box-shadow: 0 0 0 9999px rgba(10, 20, 35, 0.55);
+    pointer-events: none;
+    transition: top 0.35s ease, left 0.35s ease, width 0.35s ease, height 0.35s ease, opacity 0.25s ease;
+    z-index: 5;
+    opacity: 0;
+  }
+  .spotlight.show { display: block; opacity: 1; }
+
+  /* mockup */
+  .mockup { font-family: "Segoe UI", Arial, Helvetica, sans-serif; color: #1f2933; background: #fff; }
+  .m-chrome { background: var(--navy); color: #dce8ee; font-size: 12.5px; padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; }
+  .m-flag { background: #b8562f; color: #fff; padding: 2px 9px; border-radius: 3px; font-weight: 700; font-size: 11px; }
+  .m-banner { background: #fff; border-bottom: 2px solid #d7dde3; padding: 14px 16px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: flex-start; }
+  .m-banner-left { display: flex; gap: 14px; align-items: flex-start; }
+  .m-avatar { width: 40px; height: 40px; border-radius: 50%; background: #e4eef2; color: #1b5e7a; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; flex-shrink: 0; }
+  .m-pname { font-size: 17px; font-weight: 700; margin: 0 0 2px 0; }
+  .m-pmeta { font-size: 12.5px; color: #5b6670; margin: 0; }
+  .m-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .m-allergy { background: #fdecea; border: 1px solid #e0a8a0; color: #9a2f22; padding: 5px 10px; border-radius: 5px; font-size: 12px; font-weight: 700; }
+  .m-problem { background: #e4eef2; border: 1px solid #b9d3dd; color: #1b5e7a; padding: 5px 10px; border-radius: 5px; font-size: 12px; font-weight: 600; }
+  .m-body { display: flex; }
+  .m-side { width: 130px; background: #f6f8fa; border-right: 1px solid #d7dde3; padding: 12px 0; font-size: 12.5px; }
+  .m-side div { padding: 8px 14px; color: #5b6670; border-left: 3px solid transparent; }
+  .m-side div.active { color: #1b5e7a; font-weight: 700; background: #fff; border-left: 3px solid #1b5e7a; }
+  .m-main { flex: 1; padding: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: #f4f6f9; }
+  .m-panel { background: #fff; border: 1px solid #d7dde3; border-radius: 6px; padding: 12px 14px; }
+  .m-panel.full { grid-column: 1 / span 2; }
+  .m-panel h4 { margin: 0 0 8px 0; font-size: 13.5px; border-bottom: 1px solid #eef1f4; padding-bottom: 6px; color: #1f2933; }
+  table.m-orders { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.m-orders th { text-align: left; font-size: 11px; color: #5b6670; text-transform: uppercase; padding: 4px 5px; border-bottom: 1px solid #d7dde3; }
+  table.m-orders td { padding: 6px 5px; border-bottom: 1px solid #f0f2f4; color: #1f2933; }
+  .m-cds { margin-top: 8px; background: #fff7e0; border: 1px solid #e6cd85; color: #7a5c00; border-radius: 5px; padding: 8px 10px; font-size: 12px; }
+  .m-note { font-size: 12.5px; color: #5b6670; border-bottom: 1px dashed #e4e8eb; padding: 7px 0; }
+  .m-note:last-child { border-bottom: none; }
+  .m-note .who { color: #1f2933; font-weight: 700; }
+  .m-dup { display: inline-block; margin-left: 6px; font-size: 10.5px; background: #fff7e0; color: #7a5c00; border: 1px solid #e6cd85; padding: 1px 5px; border-radius: 3px; font-weight: 700; }
+  .m-results-row { display: flex; justify-content: space-between; font-size: 12.5px; padding: 7px 0; border-bottom: 1px solid #f0f2f4; color: #1f2933; }
+  .m-results-row:last-child { border-bottom: none; }
+  .m-result-flag { color: #9a2f22; font-weight: 700; font-size: 11.5px; }
+  .m-routed { font-size: 11px; color: #1b5e7a; font-weight: 600; }
+  .m-footer { background: #f6f8fa; border-top: 1px solid #d7dde3; padding: 7px 16px; font-size: 11px; color: #5b6670; text-align: center; }
+
+  /* instruction panel */
+  .panel {
+    margin-top: 18px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+  }
+  .step-kicker { font-size: 11.5px; font-weight: 700; letter-spacing: 0.5px; color: var(--accent); text-transform: uppercase; margin: 0 0 6px 0; }
+  .step-title { font-size: 18px; font-weight: 700; margin: 0 0 8px 0; }
+  .step-text { font-size: 14.5px; line-height: 1.55; margin: 0; }
+  .controls { display: flex; align-items: center; justify-content: space-between; margin-top: 18px; gap: 10px; flex-wrap: wrap; }
+  .controls .counter { font-size: 12.5px; color: var(--ink-soft); }
+  button.nav-btn {
+    font-family: inherit; font-size: 14px; font-weight: 700; padding: 9px 18px;
+    border-radius: 6px; border: 1px solid var(--border); background: var(--panel); color: var(--ink);
+    cursor: pointer; transition: background 0.15s ease;
+  }
+  button.nav-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button.nav-btn.primary:hover { background: #164a61; }
+  button.nav-btn:disabled { opacity: 0.4; cursor: default; }
+  button.nav-btn:not(:disabled):hover { background: var(--accent-soft); }
+
+  .grow-box { background: var(--accent-soft); border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; margin-top: 10px; font-size: 14px; }
+  .grow-box ul { margin: 6px 0 0 0; padding-left: 20px; }
+  .grow-box li { margin-bottom: 6px; }
+
+  @media (max-width: 700px) {
+    .m-main { grid-template-columns: 1fr; }
+    .m-panel.full { grid-column: 1; }
+    .m-side { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <h1>EHR Walk-Through: Know, Flow, Grow</h1>
+    <p>NU 539, Week 4 &middot; Click Next to move through each stop on the sample chart</p>
+  </div>
+
+  <div class="progress" id="progress"></div>
+
+  <div class="stage" id="stage">
+    <div class="mockup">
+      <div class="m-chrome">
+        <span>CareView Clinical &middot; Inpatient Chart</span>
+        <span class="m-flag">SAMPLE DATA, FOR TEACHING USE ONLY</span>
+      </div>
+
+      <div class="m-banner" id="region-banner">
+        <div class="m-banner-left">
+          <div class="m-avatar">JT</div>
+          <div>
+            <p class="m-pname">Patient, Jordan T.</p>
+            <p class="m-pmeta">MRN 000-00-0001 &middot; DOB 01/01/1970 (Age 56) &middot; Room 412-B &middot; Attending: Dr. A. Rivera</p>
+          </div>
+        </div>
+        <div class="m-chips">
+          <div class="m-allergy">ALLERGY: Penicillin, rash</div>
+          <div class="m-problem">Problems: Type 2 diabetes, Hypertension</div>
+        </div>
+      </div>
+
+      <div class="m-body">
+        <div class="m-side">
+          <div>Summary</div>
+          <div class="active">Orders</div>
+          <div>Results</div>
+          <div>Notes</div>
+          <div>Meds</div>
+          <div>Care Team</div>
+        </div>
+
+        <div class="m-main">
+          <div class="m-panel" id="region-orders">
+            <h4>Order entry: Diabetes management order set</h4>
+            <table class="m-orders">
+              <tr><th>Order</th><th>Details</th><th>Status</th></tr>
+              <tr><td>Basal insulin</td><td>Per sliding scale</td><td>Active</td></tr>
+              <tr><td>Fingerstick glucose</td><td>AC and HS</td><td>Active</td></tr>
+              <tr><td>Nutrition consult</td><td>Diabetic diet</td><td>Pending</td></tr>
+            </table>
+            <div class="m-cds">&#9888; <strong>Decision support:</strong> ordering sulfonylurea while basal insulin is active. Hypoglycemia risk, default dose reduced 25%. Override requires reason.</div>
+          </div>
+
+          <div class="m-panel" id="region-results">
+            <h4>Results</h4>
+            <div class="m-results-row"><span>Basic metabolic panel</span><span><span class="m-result-flag">K+ 5.4 H</span> &middot; <span class="m-routed">Routed to Dr. Rivera</span></span></div>
+            <div class="m-results-row"><span>Hemoglobin A1c</span><span class="m-routed">Routed to Dr. Rivera + care team</span></div>
+            <div class="m-results-row"><span>Chest X-ray, portable</span><span class="m-routed">Final report routed, radiology</span></div>
+          </div>
+
+          <div class="m-panel full" id="region-notes">
+            <h4>Documentation</h4>
+            <div class="m-note"><span class="who">07:42, RN Torres:</span> Fingerstick glucose 168. Basal insulin given per order. Patient tolerating regular diet.</div>
+            <div class="m-note"><span class="who">08:15, RN Torres:</span> Vitals within baseline. Skin intact, no new concerns. <span class="m-dup">Also charted on paper I&amp;O sheet</span></div>
+            <div class="m-note"><span class="who">09:03, Dr. Rivera:</span> Reviewed AM labs. Plan: continue current regimen, reassess K+ in 6 hours.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="m-footer">Fictional patient and data shown for classroom use only. Not a real patient record. Not affiliated with any EHR vendor.</div>
+    </div>
+
+    <div class="spotlight" id="spotlight"></div>
+  </div>
+
+  <div class="panel">
+    <p class="step-kicker" id="stepKicker">Step 1 of 6</p>
+    <h2 class="step-title" id="stepTitle"></h2>
+    <div id="stepBody"></div>
+
+    <div class="controls">
+      <button class="nav-btn" id="backBtn">Back</button>
+      <span class="counter" id="counter"></span>
+      <button class="nav-btn primary" id="nextBtn">Next</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  var steps = [
+    {
+      target: null,
+      kicker: "Before you start",
+      title: "A fictional, de-identified chart",
+      body: "<p class=\"step-text\">Everything on this screen, the patient, the orders, the notes, is made up for this activity. Click Next to work through four stops on the chart. Each one lines up with a task from this week's EHR walk-through.</p>"
+    },
+    {
+      target: "#region-banner",
+      kicker: "Step 1 of 4",
+      title: "Patient banner",
+      body: "<p class=\"step-text\">Find the allergy and problem list. Are they visible without extra clicks?</p>"
+    },
+    {
+      target: "#region-orders",
+      kicker: "Step 2 of 4",
+      title: "Order entry",
+      body: "<p class=\"step-text\">Locate the order set and identify one built-in decision support prompt (alert, reminder, or default value).</p>"
+    },
+    {
+      target: "#region-notes",
+      kicker: "Step 3 of 4",
+      title: "Documentation",
+      body: "<p class=\"step-text\">Trace a nursing note from entry to the point it becomes visible to the rest of the care team. Notice any place data is entered more than once.</p>"
+    },
+    {
+      target: "#region-results",
+      kicker: "Step 4 of 4",
+      title: "Results and connectivity",
+      body: "<p class=\"step-text\">Find a lab or imaging result and identify how it reaches the ordering clinician electronically.</p>"
+    },
+    {
+      target: null,
+      kicker: "Grow: reflect",
+      title: "Let's think it through",
+      body: "<p class=\"step-text\">In a few sentences, reflect on what you just saw:</p>" +
+        "<div class=\"grow-box\"><ul>" +
+        "<li>Where in this screen might a workaround start to form, and why?</li>" +
+        "<li>Which of the eight EHR components felt strongest, and which felt weakest?</li>" +
+        "<li>Doctors and nurses tend to read patient information differently. What would you change about this screen if it were designed primarily around nursing workflow?</li>" +
+        "</ul></div>"
+    }
+  ];
+
+  var current = 0;
+  var stage = document.getElementById("stage");
+  var spotlight = document.getElementById("spotlight");
+  var progress = document.getElementById("progress");
+  var stepKicker = document.getElementById("stepKicker");
+  var stepTitle = document.getElementById("stepTitle");
+  var stepBody = document.getElementById("stepBody");
+  var backBtn = document.getElementById("backBtn");
+  var nextBtn = document.getElementById("nextBtn");
+  var counter = document.getElementById("counter");
+
+  // build progress dots (one per step)
+  steps.forEach(function () {
+    var d = document.createElement("div");
+    d.className = "dot";
+    progress.appendChild(d);
+  });
+
+  function positionSpotlight(targetSel) {
+    if (!targetSel) {
+      spotlight.classList.remove("show");
+      return;
+    }
+    var el = document.querySelector(targetSel);
+    if (!el) { spotlight.classList.remove("show"); return; }
+    var stageRect = stage.getBoundingClientRect();
+    var elRect = el.getBoundingClientRect();
+    spotlight.style.left = (elRect.left - stageRect.left - 4) + "px";
+    spotlight.style.top = (elRect.top - stageRect.top - 4) + "px";
+    spotlight.style.width = (elRect.width + 8) + "px";
+    spotlight.style.height = (elRect.height + 8) + "px";
+    spotlight.classList.add("show");
+  }
+
+  function render() {
+    var s = steps[current];
+    stepKicker.textContent = s.kicker;
+    stepTitle.textContent = s.title;
+    stepBody.innerHTML = s.body;
+    counter.textContent = "Screen " + (current + 1) + " of " + steps.length;
+    backBtn.disabled = current === 0;
+    nextBtn.textContent = current === steps.length - 1 ? "Restart" : "Next";
+
+    Array.prototype.forEach.call(progress.children, function (dot, i) {
+      dot.classList.toggle("active", i === current);
+      dot.classList.toggle("done", i < current);
+    });
+
+    positionSpotlight(s.target);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  backBtn.addEventListener("click", function () {
+    if (current > 0) { current -= 1; render(); }
+  });
+  nextBtn.addEventListener("click", function () {
+    if (current === steps.length - 1) { current = 0; }
+    else { current += 1; }
+    render();
+  });
+  window.addEventListener("resize", function () {
+    positionSpotlight(steps[current].target);
+  });
+
+  render();
+</script>
+</body>
+</html>
